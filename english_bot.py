@@ -14,12 +14,19 @@ def start(update, context):
 def handle_message(update, context):
     user_message = update.message.text.lower()
 
+    # Check for specific types of inquiries
     if re.search(r'\bwhat does (.+?) mean\b', user_message):
         word = re.search(r'\bwhat does (.+?) mean\b', user_message).group(1)
         response = f"The word '{word}' can mean various things depending on context. Let’s explore it together!"
     elif re.search(r'\bwhat are some synonyms for (.+?)\b', user_message):
         word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1)
         response = f"Some synonyms for '{word}' include 'excellent,' 'great,' and 'awesome.' Want to practice using them?"
+    elif re.search(r'\bhi|hello|hey\b', user_message):
+        response = "Hello! How can I help you with your English practice today?"
+    elif re.search(r'\bhow are you\b', user_message):
+        response = "I'm just a bot, but I'm here to help you practice English! What would you like to talk about?"
+    elif re.search(r'\bhelp\b', user_message):
+        response = "You can ask me about word meanings, synonyms, or just practice conversation with me!"
     else:
         response = f"You said: {user_message}. Let's keep practicing!"
 
