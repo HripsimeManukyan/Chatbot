@@ -123,6 +123,10 @@ def main():
     # Start the Bot
     updater.start_polling()
 
+    # Print the port for debugging
+    port = os.environ.get("PORT", 5000)
+    print(f"Bot is running on port: {port}")
+
     # Keep the bot running until interrupted
     updater.idle()
 
