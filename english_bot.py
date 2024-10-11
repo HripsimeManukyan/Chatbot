@@ -1,3 +1,4 @@
+
 import os
 import re
 import requests
@@ -9,6 +10,9 @@ from flask import Flask, request
 TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'
 app = Flask(__name__)
 
+# Set your webhook URL
+WEBHOOK_URL = 'https://chatbot-3-oebw.onrender.com/webhook/' + TOKEN
+
 # Dictionary to track user states
 user_states = {}
 
@@ -16,14 +20,13 @@ user_states = {}
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
 
-# Function to set the webhook for the bot
+# Function to set the webhook with Telegram
 def set_webhook():
-    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://<YOUR_SERVER_URL>/webhook/{TOKEN}"
-    response = requests.get(url)
+    response = requests.post(f'https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}')
     if response.status_code == 200:
-        print("Webhook set successfully.")
+        print(f"Webhook set successfully: {WEBHOOK_URL}")
     else:
-        print(f"Failed to set webhook: {response.content}")
+        print(f"Failed to set webhook: {response.text}")
 
 # Function to handle the /start command
 def start(update, context):
@@ -41,23 +44,19 @@ def start(update, context):
 def get_synonyms(word):
     url = f"https://api.datamuse.com/words?rel_syn={word}"
     response = requests.get(url)
-
     if response.status_code == 200:
         data = response.json()
         synonyms = [item['word'] for item in data]
         return synonyms
-    else:
-        return []
+    return []
 
 # Function to get word definition using an external API
 def get_word_definition(word):
     try:
         url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
         response = requests.get(url)
-
         if response.status_code == 200:
             data = response.json()
-
             if data and isinstance(data, list):
                 meanings = data[0].get('meanings', [])
                 if meanings:
@@ -67,8 +66,7 @@ def get_word_definition(word):
                         example = definitions_list[0].get('example', 'No example available.')
                         return f"The word '{word}' means: {definition}\nExample: {example}\n\nCan you use '{word}' in a sentence?"
             return f"Sorry, I couldn't find a valid definition for '{word}'."
-        else:
-            return f"Sorry, I couldn't retrieve the definition for '{word}' at the moment."
+        return f"Sorry, I couldn't retrieve the definition for '{word}' at the moment."
     except Exception as e:
         return f"An error occurred while retrieving the definition: {e}"
 
@@ -91,16 +89,14 @@ def handle_message(update, context):
 
     # Check for word definitions
     if re.search(r'\bwhat does (.+?) mean\b', user_message):
-        word = re.search(r'\bwhat does (.+?) mean\b', user_message).group(1)
-        word = word.strip('\'" ')  # Remove quotes and spaces
+        word = re.search(r'\bwhat does (.+?) mean\b', user_message).group(1).strip('\'" ')
         response = get_word_definition(word)
         user_states[user_id] = {'state': 'practice_word', 'word': word}  # Set practice mode for definition
         update.message.reply_text(response)
 
     # Check for synonyms
     elif re.search(r'\bwhat are some synonyms for (.+?)\b', user_message):
-        word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1)
-        word = word.strip('\'" ')
+        word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1).strip('\'" ')
         synonyms = get_synonyms(word)
         if synonyms:
             response = f"Some synonyms for '{word}' include {', '.join(synonyms)}. Want to practice using them?"
@@ -121,27 +117,13 @@ def handle_message(update, context):
 def error(update, context):
     print(f"Update {update} caused error {context.error}")
 
-# Set up webhook route
-# Set your webhook URL
-WEBHOOK_URL = 'https://chatbot-3-oebw.onrender.com/webhook/' + TOKEN
-
-# Set the webhook with Telegram when the app starts
-@app.before_first_request
-def set_webhook():
-    requests.post(f'https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}')
-
-# Webhook route
+# Webhook route to handle Telegram updates
 @app.route(f'/webhook/{TOKEN}', methods=['POST'])
 def webhook():
     if request.method == 'POST':
         update = Update.de_json(request.get_json(force=True), updater.bot)
         dispatcher.process_update(update)
         return "ok", 200
-
-
-@app.before_first_request
-def setup():
-    set_webhook()  # Set webhook when the app starts
 
 if __name__ == '__main__':
     # Register handlers
@@ -151,8 +133,8 @@ if __name__ == '__main__':
     # Log errors
     dispatcher.add_error_handler(error)
 
+    # Set webhook when app starts
+    set_webhook()
+
     # Start Flask app
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-
