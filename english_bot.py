@@ -4,6 +4,8 @@ import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
 from telegram import Update
 from flask import Flask, request
+from apscheduler.schedulers.background import BackgroundScheduler
+from random_word import RandomWords
 
 # Telegram Bot Token
 TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'
@@ -18,7 +20,28 @@ user_states = {}
 # Initialize Telegram Updater and Dispatcher
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
+def get_antonyms(word):
+    url = f"https://api.datamuse.com/words?rel_ant={word}"
+    response = requests.get(url)
 
+    if response.status_code == 200:
+        data = response.json()
+        antonyms = [item['word'] for item in data]
+        return antonyms
+    else:
+        return []
+
+# Function to fetch a random word, its definition, and synonyms
+def word_of_the_day(context):
+    r = RandomWords()
+    word = r.get_random_word()
+    definition = get_word_definition(word)  # Reuse your existing function
+    context.bot.send_message(chat_id='YOUR_CHAT_ID', text=f"Word of the Day: {word}\n\n{definition}")
+
+# Scheduler to send the Word of the Day daily
+scheduler = BackgroundScheduler()
+scheduler.add_job(word_of_the_day, 'interval', days=1)
+scheduler.start()
 # Function to set the webhook
 def set_webhook():
     try:
@@ -79,7 +102,9 @@ def start(update, context):
         "Hello! I'm your Vocabulary Practice bot. Here's how you can interact with me:\n"
         "1. Ask for a word definition: Type 'What does [word] mean?'\n"
         "2. Ask for synonyms: Type 'What are some synonyms for [word]?' \n"
-        "3. Practice using a word in a sentence after asking for synonyms or definitions.\n"
+        "3. Ask for antonyms: Type 'What are some antonyms for [word]?' \n"
+        "4. Practice using a word in a sentence after asking for synonyms or definitions.\n"
+        "5. Get a daily vocabulary boost: Type 'What is the Word of the Day?' to learn a new word with its definition and synonyms.\n"
         "Try it out, and let's start learning!"
     )
 
@@ -97,20 +122,24 @@ def handle_message(update, context):
 
     # Synonyms Request
     elif re.search(r'\bwhat are some synonyms for (.+?)\b', user_message):
-        word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1)
+        # Your existing synonyms handling code
+        pass
+
+    # Antonyms Request
+    elif re.search(r'\bwhat are some antonyms for (.+?)\b', user_message):
+        word = re.search(r'\bwhat are some antonyms for (.+?)\b', user_message).group(1)
         word = word.strip('\'" ')
-        synonyms = get_synonyms(word)
-        if synonyms:
-            response = (f"Some synonyms for '{word}' include {', '.join(synonyms)}.\n"
-                        "Want to practice using them?")
-            user_states[user_id] = {'state': 'practice_synonym', 'word': word}
+        antonyms = get_antonyms(word)
+        if antonyms:
+            response = f"Some antonyms for '{word}' include {', '.join(antonyms)}."
         else:
-            response = f"Sorry, I don't know any synonyms for '{word}'."
+            response = f"Sorry, I don't know any antonyms for '{word}'."
         update.message.reply_text(response)
 
     # Default response
     else:
-        update.message.reply_text("I'm not sure how to help with that. You can ask me for word definitions or synonyms.")
+        update.message.reply_text("I'm not sure how to help with that. You can ask me for word definitions, synonyms, or antonyms.")
+
 
 # Function to handle errors
 def error(update, context):
