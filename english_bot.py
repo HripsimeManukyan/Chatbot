@@ -16,6 +16,15 @@ user_states = {}
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
 
+# Function to set the webhook for the bot
+def set_webhook():
+    url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://<YOUR_SERVER_URL>/webhook/{TOKEN}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        print("Webhook set successfully.")
+    else:
+        print(f"Failed to set webhook: {response.content}")
+
 # Function to handle the /start command
 def start(update, context):
     user_id = update.message.chat_id
@@ -113,6 +122,15 @@ def error(update, context):
     print(f"Update {update} caused error {context.error}")
 
 # Set up webhook route
+# Set your webhook URL
+WEBHOOK_URL = 'https://chatbot-3-oebw.onrender.com/webhook/' + TOKEN
+
+# Set the webhook with Telegram when the app starts
+@app.before_first_request
+def set_webhook():
+    requests.post(f'https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}')
+
+# Webhook route
 @app.route(f'/webhook/{TOKEN}', methods=['POST'])
 def webhook():
     if request.method == 'POST':
@@ -121,6 +139,9 @@ def webhook():
         return "ok", 200
 
 
+@app.before_first_request
+def setup():
+    set_webhook()  # Set webhook when the app starts
 
 if __name__ == '__main__':
     # Register handlers
@@ -132,5 +153,6 @@ if __name__ == '__main__':
 
     # Start Flask app
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
