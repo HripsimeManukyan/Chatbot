@@ -5,6 +5,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispa
 from telegram import Update
 from flask import Flask, request
 from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import timezone
 from random_word import RandomWords
 
 # Telegram Bot Token
@@ -41,6 +42,14 @@ def word_of_the_day(context):
 # Scheduler to send the Word of the Day daily
 scheduler = BackgroundScheduler()
 scheduler.add_job(word_of_the_day, 'interval', days=1)
+scheduler.start()
+
+tz = timezone('Europe/London')
+
+# Schedule the job
+scheduler.add_job(word_of_the_day, 'interval', days=1, timezone=tz)
+
+# Start the scheduler
 scheduler.start()
 # Function to set the webhook
 def set_webhook():
