@@ -4,16 +4,14 @@ import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
 from telegram import Update
 from flask import Flask, request
-from apscheduler.schedulers.background import BackgroundScheduler
-from pytz import timezone
-from random_word import RandomWords
+
 
 # Telegram Bot Token
-TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'
+TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'  # Replace with your actual token
 app = Flask(__name__)
 
 # Set your webhook URL
-WEBHOOK_URL = 'https://chatbot-6-9y8n.onrender.com/webhook/' + TOKEN
+WEBHOOK_URL = 'https://chatbot-6-9y8n.onrender.com/' + TOKEN
 
 # Dictionary to track user states
 user_states = {}
@@ -21,6 +19,9 @@ user_states = {}
 # Initialize Telegram Updater and Dispatcher
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
+
+
+
 def get_antonyms(word):
     url = f"https://api.datamuse.com/words?rel_ant={word}"
     response = requests.get(url)
@@ -32,25 +33,7 @@ def get_antonyms(word):
     else:
         return []
 
-# Function to fetch a random word, its definition, and synonyms
-def word_of_the_day(context):
-    r = RandomWords()
-    word = r.get_random_word()
-    definition = get_word_definition(word)  # Reuse your existing function
-    context.bot.send_message(chat_id='YOUR_CHAT_ID', text=f"Word of the Day: {word}\n\n{definition}")
 
-# Scheduler to send the Word of the Day daily
-scheduler = BackgroundScheduler()
-scheduler.add_job(word_of_the_day, 'interval', days=1)
-scheduler.start()
-
-tz = timezone('Europe/London')
-
-# Schedule the job
-scheduler.add_job(word_of_the_day, 'interval', days=1, timezone=tz)
-
-# Start the scheduler
-scheduler.start()
 # Function to set the webhook
 def set_webhook():
     try:
@@ -61,6 +44,8 @@ def set_webhook():
             print(f"Failed to set webhook: {response.status_code}")
     except Exception as e:
         print(f"An error occurred while setting the webhook: {e}")
+
+
 # Function to fetch word definition
 def get_word_definition(word):
     try:
@@ -80,12 +65,13 @@ def get_word_definition(word):
 
                         return (f"The word '{word}' means: {definition}\n"
                                 f"Example: {example}\n\n"
-                                "Can you use '{word}' in a sentence?")
+                                f"Can you use '{word}' in a sentence?")
             return f"Sorry, I couldn't find a valid definition for '{word}'."
         else:
             return f"Sorry, I couldn't retrieve the definition for '{word}' at the moment."
     except Exception as e:
         return f"An error occurred while retrieving the definition: {e}"
+
 
 # Function to fetch synonyms
 def get_synonyms(word):
@@ -103,6 +89,7 @@ def get_synonyms(word):
     else:
         return []
 
+
 # Function to handle the /start command
 def start(update, context):
     user_id = update.message.chat_id
@@ -113,9 +100,9 @@ def start(update, context):
         "2. Ask for synonyms: Type 'What are some synonyms for [word]?' \n"
         "3. Ask for antonyms: Type 'What are some antonyms for [word]?' \n"
         "4. Practice using a word in a sentence after asking for synonyms or definitions.\n"
-        "5. Get a daily vocabulary boost: Type 'What is the Word of the Day?' to learn a new word with its definition and synonyms.\n"
         "Try it out, and let's start learning!"
     )
+
 
 # Function to handle incoming messages and questions
 def handle_message(update, context):
@@ -131,8 +118,14 @@ def handle_message(update, context):
 
     # Synonyms Request
     elif re.search(r'\bwhat are some synonyms for (.+?)\b', user_message):
-        # Your existing synonyms handling code
-        pass
+        word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1)
+        word = word.strip('\'" ')
+        synonyms = get_synonyms(word)
+        if synonyms:
+            response = f"Some synonyms for '{word}' include {', '.join(synonyms)}."
+        else:
+            response = f"Sorry, I don't know any synonyms for '{word}'."
+        update.message.reply_text(response)
 
     # Antonyms Request
     elif re.search(r'\bwhat are some antonyms for (.+?)\b', user_message):
@@ -147,12 +140,14 @@ def handle_message(update, context):
 
     # Default response
     else:
-        update.message.reply_text("I'm not sure how to help with that. You can ask me for word definitions, synonyms, or antonyms.")
+        update.message.reply_text(
+            "I'm not sure how to help with that. You can ask me for word definitions, synonyms, or antonyms.")
 
 
 # Function to handle errors
 def error(update, context):
     print(f"Update {update} caused error {context.error}")
+
 
 # Webhook route to handle Telegram updates
 @app.route(f'/webhook/{TOKEN}', methods=['POST'])
@@ -161,6 +156,7 @@ def webhook():
         update = Update.de_json(request.get_json(force=True), updater.bot)
         dispatcher.process_update(update)
         return "ok", 200
+
 
 if __name__ == '__main__':
     # Register handlers
@@ -175,4 +171,3 @@ if __name__ == '__main__':
 
     # Start Flask app
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
