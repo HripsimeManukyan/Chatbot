@@ -1,12 +1,20 @@
 import os
 import re
 import requests
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
+from telegram import Update
+from flask import Flask, request
 
+# Telegram Bot Token
 TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'
+app = Flask(__name__)
 
 # Dictionary to track user states
 user_states = {}
+
+# Initialize Telegram Updater and Dispatcher
+updater = Updater(TOKEN, use_context=True)
+dispatcher = updater.dispatcher
 
 # Function to handle the /start command
 def start(update, context):
@@ -41,7 +49,6 @@ def get_word_definition(word):
         if response.status_code == 200:
             data = response.json()
 
-            # Extract the definition and example
             if data and isinstance(data, list):
                 meanings = data[0].get('meanings', [])
                 if meanings:
@@ -105,32 +112,25 @@ def handle_message(update, context):
 def error(update, context):
     print(f"Update {update} caused error {context.error}")
 
+# Set up webhook route
+@app.route(f'/webhook/{TOKEN}', methods=['POST'])
+def webhook():
+    if request.method == 'POST':
+        update = Update.de_json(request.get_json(force=True), updater.bot)
+        dispatcher.process_update(update)
+        return "ok", 200
+
 def main():
-    # Create the Updater and pass your bot's token
-    updater = Updater(TOKEN, use_context=True)
-
-    # Get the dispatcher to register handlers
-    dp = updater.dispatcher
-
-    # Register the /start command handler
-    dp.add_handler(CommandHandler("start", start))
-
-    # Register a message handler to process all text messages
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    # Register handlers
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     # Log errors
-    dp.add_error_handler(error)
-
-    # Start the Bot
-    updater.start_polling()
-
-    # Print the port for debugging
-    port = os.environ.get("PORT", 5000)
-    print(f"Bot is running on port: {port}")
-
-    # Keep the bot running until interrupted
-    updater.idle()
+    dispatcher.add_error_handler(error)
 
 if __name__ == '__main__':
     main()
+    # Start Flask app
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
