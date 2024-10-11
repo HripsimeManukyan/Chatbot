@@ -120,7 +120,9 @@ def webhook():
         dispatcher.process_update(update)
         return "ok", 200
 
-def main():
+
+
+if __name__ == '__main__':
     # Register handlers
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
@@ -128,8 +130,6 @@ def main():
     # Log errors
     dispatcher.add_error_handler(error)
 
-if __name__ == '__main__':
-    main()
     # Start Flask app
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
