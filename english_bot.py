@@ -3,11 +3,10 @@ import re
 import requests
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispatcher
 from telegram import Update
-from googletrans import Translator
 from flask import Flask, request
 
 # Telegram Bot Token
-TOKEN = 'YOUR_TOKEN'
+TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'
 app = Flask(__name__)
 
 # Set your webhook URL
@@ -20,18 +19,17 @@ user_states = {}
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
 
-# Initialize the Translator
-translator = Translator()
-
-# Function to translate a word to Armenian
-def translate_to_armenian(word):
+# Function to set the webhook
+def set_webhook():
     try:
-        translation = translator.translate(word, dest='hy')
-        return translation.text
+        response = requests.get(WEBHOOK_URL)
+        if response.status_code == 200:
+            print("Webhook set successfully.")
+        else:
+            print(f"Failed to set webhook: {response.status_code}")
     except Exception as e:
-        return f"An error occurred while translating: {e}"
-
-# Function to fetch word definition and include Armenian translation
+        print(f"An error occurred while setting the webhook: {e}")
+# Function to fetch word definition
 def get_word_definition(word):
     try:
         url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
@@ -48,12 +46,8 @@ def get_word_definition(word):
                         definition = definitions_list[0].get('definition', 'No definition available.')
                         example = definitions_list[0].get('example', 'No example available.')
 
-                        # Get Armenian translation
-                        armenian_translation = translate_to_armenian(word)
-
                         return (f"The word '{word}' means: {definition}\n"
                                 f"Example: {example}\n\n"
-                                f"Armenian Translation: {armenian_translation}\n\n"
                                 "Can you use '{word}' in a sentence?")
             return f"Sorry, I couldn't find a valid definition for '{word}'."
         else:
@@ -61,7 +55,7 @@ def get_word_definition(word):
     except Exception as e:
         return f"An error occurred while retrieving the definition: {e}"
 
-# Function to fetch synonyms and their Armenian translations
+# Function to fetch synonyms
 def get_synonyms(word):
     url = f"https://api.datamuse.com/words?rel_syn={word}"
     response = requests.get(url)
@@ -71,13 +65,11 @@ def get_synonyms(word):
         synonyms = [item['word'] for item in data]
 
         if synonyms:
-            # Translate the first synonym into Armenian (or any number of synonyms)
-            translated_synonyms = [translate_to_armenian(synonym) for synonym in synonyms]
-            return synonyms, translated_synonyms
+            return synonyms
         else:
-            return [], []
+            return []
     else:
-        return [], []
+        return []
 
 # Function to handle the /start command
 def start(update, context):
@@ -107,10 +99,9 @@ def handle_message(update, context):
     elif re.search(r'\bwhat are some synonyms for (.+?)\b', user_message):
         word = re.search(r'\bwhat are some synonyms for (.+?)\b', user_message).group(1)
         word = word.strip('\'" ')
-        synonyms, translated_synonyms = get_synonyms(word)
+        synonyms = get_synonyms(word)
         if synonyms:
             response = (f"Some synonyms for '{word}' include {', '.join(synonyms)}.\n"
-                        f"Armenian Translations: {', '.join(translated_synonyms)}\n"
                         "Want to practice using them?")
             user_states[user_id] = {'state': 'practice_synonym', 'word': word}
         else:
@@ -146,3 +137,4 @@ if __name__ == '__main__':
 
     # Start Flask app
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
