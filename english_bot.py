@@ -5,13 +5,12 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Dispa
 from telegram import Update
 from flask import Flask, request
 
-
 # Telegram Bot Token
 TOKEN = '7529101956:AAHTYrB3TwH18GOv4IEtZJ-u53v0_GaW840'  # Replace with your actual token
 app = Flask(__name__)
 
 # Set your webhook URL
-WEBHOOK_URL = 'https://chatbot-6-9y8n.onrender.com/' + TOKEN
+WEBHOOK_URL = f'https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://chatbot-6-9y8n.onrender.com/webhook/{TOKEN}'
 
 # Dictionary to track user states
 user_states = {}
@@ -19,8 +18,6 @@ user_states = {}
 # Initialize Telegram Updater and Dispatcher
 updater = Updater(TOKEN, use_context=True)
 dispatcher = updater.dispatcher
-
-
 
 def get_antonyms(word):
     url = f"https://api.datamuse.com/words?rel_ant={word}"
@@ -33,18 +30,16 @@ def get_antonyms(word):
     else:
         return []
 
-
 # Function to set the webhook
 def set_webhook():
     try:
-        response = requests.get(WEBHOOK_URL)
+        response = requests.post(WEBHOOK_URL)  # Changed to POST
         if response.status_code == 200:
             print("Webhook set successfully.")
         else:
-            print(f"Failed to set webhook: {response.status_code}")
+            print(f"Failed to set webhook: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"An error occurred while setting the webhook: {e}")
-
 
 # Function to fetch word definition
 def get_word_definition(word):
@@ -72,7 +67,6 @@ def get_word_definition(word):
     except Exception as e:
         return f"An error occurred while retrieving the definition: {e}"
 
-
 # Function to fetch synonyms
 def get_synonyms(word):
     url = f"https://api.datamuse.com/words?rel_syn={word}"
@@ -89,7 +83,6 @@ def get_synonyms(word):
     else:
         return []
 
-
 # Function to handle the /start command
 def start(update, context):
     user_id = update.message.chat_id
@@ -102,7 +95,6 @@ def start(update, context):
         "4. Practice using a word in a sentence after asking for synonyms or definitions.\n"
         "Try it out, and let's start learning!"
     )
-
 
 # Function to handle incoming messages and questions
 def handle_message(update, context):
@@ -143,20 +135,18 @@ def handle_message(update, context):
         update.message.reply_text(
             "I'm not sure how to help with that. You can ask me for word definitions, synonyms, or antonyms.")
 
-
 # Function to handle errors
 def error(update, context):
     print(f"Update {update} caused error {context.error}")
-
 
 # Webhook route to handle Telegram updates
 @app.route(f'/webhook/{TOKEN}', methods=['POST'])
 def webhook():
     if request.method == 'POST':
         update = Update.de_json(request.get_json(force=True), updater.bot)
+        print(f"Received update: {update}")  # Log received update
         dispatcher.process_update(update)
         return "ok", 200
-
 
 if __name__ == '__main__':
     # Register handlers
